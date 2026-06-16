@@ -244,14 +244,7 @@
         </div>
         <div id="backupNote" class="acc" style="margin-top:10px"></div>
         <h3 style="margin-top:24px">ซิงค์ข้ามเครื่อง (อัตโนมัติ)</h3>
-        <p>ตั้งครั้งเดียว แล้วความคืบหน้าจะซิงค์ทุกเครื่องที่ล็อกอินบัญชีเดียวกันผ่าน Firebase (ฟรี) — ทบทวนเครื่องไหนก็อัปเดตอีกเครื่องเอง</p>
-        <ol style="font-size:.84rem;color:var(--muted);line-height:1.7;padding-left:18px;margin:6px 0">
-          <li>สร้างโปรเจกต์ฟรีที่ console.firebase.google.com → Add app → Web (&lt;/&gt;) → ก๊อปออบเจ็กต์ <b>firebaseConfig</b></li>
-          <li>เปิด <b>Firestore Database</b> (สร้างฐานข้อมูล) และเปิด <b>Authentication → Sign-in method → Email/Password</b></li>
-          <li>วาง config ด้านล่าง กดบันทึก แล้วเข้าสู่ระบบด้วยอีเมล/รหัสเดียวกันทุกเครื่อง</li>
-        </ol>
-        <textarea id="fbConfigInput" placeholder="วาง firebaseConfig { ... } ตรงนี้" style="width:100%;min-height:96px;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:10px;padding:10px;font-family:monospace;font-size:.8rem"></textarea>
-        <div style="margin-top:8px"><button class="mini" onclick="saveFbConfig()">บันทึก config</button></div>
+        <p>เข้าสู่ระบบด้วยอีเมล/รหัสเดียวกันในทุกเครื่อง แล้วความคืบหน้าจะซิงค์ให้อัตโนมัติ — ล็อกอินแค่ครั้งเดียวต่อเครื่อง ไม่ต้องกรอกซ้ำ</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
           <input id="fbEmail" type="email" autocomplete="email" placeholder="อีเมล" style="flex:1;min-width:160px;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:10px;padding:9px 11px">
           <input id="fbPass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน (≥6 ตัว)" style="flex:1;min-width:160px;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:10px;padding:9px 11px">
@@ -1474,13 +1467,14 @@ function go(v){
 
 /* ---------- Cloud Sync (Firebase, optional) ---------- */
 var SYNC={app:null,db:null,uid:null,ready:false,pushTimer:null};
+var DEFAULT_FB_CONFIG={apiKey:"AIzaSyAc7eEbiFgIekRBXIKaqMRYLEvLfLagGJQ",authDomain:"toeic-vocab-dd17a.firebaseapp.com",projectId:"toeic-vocab-dd17a",storageBucket:"toeic-vocab-dd17a.firebasestorage.app",messagingSenderId:"861070969399",appId:"1:861070969399:web:566b7d9e5f5e0d0eb50db2"};
 function syncable(k){return k==="usercards"||k==="lcmiss"||k==="dictmiss"||(typeof k==="string"&&k.indexOf("srs:")===0);}
 function setSyncStatus(msg,cls){var el=document.getElementById("syncStatus");if(el){el.textContent=msg;el.className="acc "+(cls||"");}}
 function updateSyncButtons(on){
   var o=document.getElementById("syncSignOutBtn"); if(o)o.style.display=on?"inline-block":"none";
   var n=document.getElementById("syncNowBtn"); if(n)n.style.display=on?"inline-block":"none";
 }
-function getFbConfig(){try{var r=localStorage.getItem("fbconfig");return r?JSON.parse(r):null;}catch(e){return null;}}
+function getFbConfig(){try{var r=localStorage.getItem("fbconfig");if(r)return JSON.parse(r);}catch(e){}return (typeof DEFAULT_FB_CONFIG!=="undefined"&&DEFAULT_FB_CONFIG.apiKey)?DEFAULT_FB_CONFIG:null;}
 function parseConfig(txt){
   txt=txt.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g,'"').replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g,"'"); // normalize smart quotes
   var m=txt.match(/\{[\s\S]*\}/); if(!m) throw new Error("no object");
@@ -1584,10 +1578,7 @@ function syncPull(){
   }).catch(function(e){ setSyncStatus("ดึงข้อมูลไม่สำเร็จ: "+(e.message||e.code)+" (เช็ก Firestore rules)","again"); });
 }
 function initSyncBoot(){
-  var cfg=getFbConfig();
-  var ta=document.getElementById("fbConfigInput");
-  if(cfg&&ta&&!ta.value) ta.value=JSON.stringify(cfg,null,2);
-  if(cfg) initSync(); else setSyncStatus("ปิดอยู่ — ตั้งค่าด้านบนเพื่อเปิดการซิงค์","");
+  if(getFbConfig()) initSync(); else setSyncStatus("ปิดอยู่","");
 }
 
 loadAll().then(function(){ try{ initSyncBoot(); }catch(e){} });
