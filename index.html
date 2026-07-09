@@ -207,6 +207,7 @@
         <button id="browseClear" class="b-clear" onclick="clearBrowseSearch()" aria-label="ล้างคำค้น">✕</button>
       </div>
       <div id="browseLevels" class="b-levels"></div>
+      <div id="browseStatus"></div>
       <div class="b-levelnote">ℹ️ ระดับเป็น<b>ค่าประมาณ</b>แนว CEFR/Oxford (A1 ง่ายสุด → C1 ยากสุด) ไม่ใช่ระดับทางการของ ETS/Oxford · วลี-สำนวนบางคำไม่มีในลิสต์ Oxford จึงเป็นการกะระดับความยากคร่าวๆ</div>
       <div id="browseCount" class="b-count"></div>
       <div id="browseList"></div>
@@ -1187,9 +1188,9 @@ function renderStats(){
   const colors=['#e57373','#ffb74d','#fff176','#81c784','#4db6ac'];
   const labels=['ใหม่/ลืม','เริ่มจำ','กำลังจำ','เกือบแม่น','แม่นแล้ว'];
   const bar=counts.map((n,i)=>n?`<div title="${labels[i]}: ${n}" style="width:${(n/total*100).toFixed(2)}%;background:${colors[i]}"></div>`:'').join('');
-  const legend=counts.map((n,i)=>`<span class="lg-item"><i style="background:${colors[i]}"></i>${labels[i]} <b>${n}</b></span>`).join('');
+  const legend=counts.map((n,i)=>`<span class="lg-item" style="cursor:pointer" onclick="goStatusFilter(${i})"><i style="background:${colors[i]}"></i>${labels[i]} <b>${n}</b></span>`).join('');
   document.getElementById('statline').innerHTML=
-    `<div class="stat-row">ทั้งหมด <b>${DECK.length}</b> คำ · ถึงรอบทบทวน <b>${due}</b> · แม่นแล้ว <b>${learned}</b></div>`+
+    `<div class="stat-row">ทั้งหมด <b>${DECK.length}</b> คำ · <span style="cursor:pointer;text-decoration:underline" onclick="goStatusFilter('due')">ถึงรอบทบทวน <b>${due}</b></span> · แม่นแล้ว <b>${learned}</b></div>`+
     `<div class="progress-bar">${bar}</div>`+
     `<div class="progress-legend">${legend}</div>`;
 }
@@ -1282,6 +1283,9 @@ function renderDone(stage){
 
 /* Browse */
 let browseLevel='all';
+let browseStatusFilter=null; // null | 'due' | 0..4 (box number)
+function goStatusFilter(type){browseStatusFilter=type; browseLevel='all'; go('browse');}
+function clearStatusFilter(){browseStatusFilter=null; renderBrowse();}
 function setBrowseLevel(lv){browseLevel=lv;renderBrowse();}
 function renderBrowse(){
   const el=document.getElementById('browseList');
@@ -1298,7 +1302,25 @@ function renderBrowse(){
     const n = lv==='all'?DECK.length:DECK.filter(c=>(LEVELS[c.word]||'')===lv).length;
     return `<span class="lchip${browseLevel===lv?' on':''}" onclick="setBrowseLevel('${lv}')">${lvLabel[lv]} ${n}</span>`;
   }).join('');
+  // status filter chip
+  const statusEl=document.getElementById('browseStatus');
+  if(statusEl){
+    if(browseStatusFilter===null){
+      statusEl.innerHTML='';
+    } else {
+      const statusLabels={0:'ใหม่/ลืม',1:'เริ่มจำ',2:'กำลังจำ',3:'เกือบแม่น',4:'แม่นแล้ว',due:'ถึงรอบทบทวน'};
+      statusEl.innerHTML=`<span class="lchip on">กำลังกรอง: ${statusLabels[browseStatusFilter]} <b onclick="clearStatusFilter()" style="margin-left:6px;cursor:pointer">✕</b></span>`;
+    }
+  }
   let list=[...DECK].sort((a,b)=>a.word.localeCompare(b.word));
+  if(browseStatusFilter!==null){
+    const now=Date.now();
+    if(browseStatusFilter==='due'){
+      list=list.filter(c=>(srs[c.word].due||0)<=now);
+    } else {
+      list=list.filter(c=>Math.min(srs[c.word].box||0,4)===browseStatusFilter);
+    }
+  }
   if(q)list=list.filter(c=>c.word.toLowerCase().startsWith(q));
   if(browseLevel!=='all')list=list.filter(c=>(LEVELS[c.word]||'')===browseLevel);
   const countEl=document.getElementById('browseCount');
